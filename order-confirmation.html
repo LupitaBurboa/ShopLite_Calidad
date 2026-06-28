@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmed — ShopLite</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="brand">Shop<span>Lite</span></a>
+      <div class="nav-links" id="authArea"></div>
+      <div class="nav-links">
+        <a href="cart.html" class="nav-link cart-link">
+          🛒 Cart <span id="cartCount" class="cart-badge">0</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="confirm-wrap">
+      <div class="confirm-icon">✓</div>
+      <h2>Thank you for your order!</h2>
+      <p id="confirmMessage" style="color:var(--color-text-muted);">
+        Your payment was processed successfully and your order is being prepared.
+      </p>
+      <div class="order-id-box" id="orderIdBox"></div>
+      <div id="orderItemsSummary" style="text-align:left; margin: 20px 0;"></div>
+      <a href="index.html" class="btn btn-primary">Continue Shopping</a>
+    </div>
+  </main>
+
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = requireLogin('login.html');
+      if (!user) return;
+      renderNavbar();
+
+      const orderId = sessionStorage.getItem('lastOrderId');
+      if (!orderId) {
+        document.getElementById('orderIdBox').textContent = 'No recent order found.';
+        return;
+      }
+
+      const order = OrderDB.getAll().find(o => o.id === orderId);
+      if (!order) {
+        document.getElementById('orderIdBox').textContent = 'Order not found.';
+        return;
+      }
+
+      document.getElementById('orderIdBox').textContent = `Order ID: ${order.id}`;
+
+      const itemsHTML = order.items.map(i => `
+        <div class="mini-order-item">
+          <span>${escapeHTML(i.name)} × ${i.qty}</span>
+          <span>${formatPrice(i.price * i.qty)}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('orderItemsSummary').innerHTML = `
+        ${itemsHTML}
+        <div class="summary-row total"><span>Total Paid</span><span>${formatPrice(order.total)}</span></div>
+      `;
+    });
+  </script>
+</body>
+</html>

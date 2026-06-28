@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — ShopLite</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="brand">Shop<span>Lite</span> <small style="font-size:0.65rem; color:var(--color-text-muted);">ADMIN</small></a>
+      <div class="nav-links" id="authArea"></div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Admin Dashboard</h1>
+      <a href="index.html" class="nav-link">View Store →</a>
+    </div>
+
+    <div class="admin-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value" id="statProducts">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Orders</div>
+        <div class="stat-value" id="statOrders">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value" id="statRevenue">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Registered Users</div>
+        <div class="stat-value" id="statUsers">0</div>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="products">Products</button>
+      <button class="admin-tab" data-tab="orders">Orders</button>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="tabProducts">
+      <div class="page-header" style="margin-top:0;">
+        <div></div>
+        <button class="btn btn-primary" id="addProductBtn">+ Add Product</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="productsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ORDERS TAB -->
+    <div id="tabOrders" style="display:none;">
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Product Add/Edit Modal -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal-box">
+      <h3 id="modalTitle">Add Product</h3>
+      <div id="modalError" class="form-error"></div>
+      <form id="productForm">
+        <input type="hidden" id="productId">
+        <div class="form-group">
+          <label for="prodName">Product Name</label>
+          <input type="text" id="prodName" required>
+        </div>
+        <div class="form-group">
+          <label for="prodDescription">Description</label>
+          <textarea id="prodDescription" required></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="prodPrice">Price ($)</label>
+            <input type="number" id="prodPrice" step="0.01" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="prodStock">Stock</label>
+            <input type="number" id="prodStock" step="1" min="0" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="prodCategory">Category</label>
+          <input type="text" id="prodCategory" required placeholder="e.g. Electronics">
+        </div>
+        <div class="form-group">
+          <label for="prodImage">Image URL</label>
+          <input type="text" id="prodImage" required placeholder="https://...">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveProductBtn">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal-box">
+      <h3>Delete Product</h3>
+      <p>Are you sure you want to delete "<span id="deleteProductName"></span>"? This cannot be undone.</p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
