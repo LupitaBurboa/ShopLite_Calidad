@@ -3,25 +3,26 @@
    ========================================================= */
 
 let pendingDeleteId = null;
+let pendingImagePreviewUrl = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const admin = requireAdmin('index.html');
+document.addEventListener('DOMContentLoaded', async () => {
+  const admin = await requireAdmin('index.html');
   if (!admin) return;
 
-  renderNavbar();
-  renderStats();
-  renderProductsTable();
-  renderOrdersTable();
+  await renderNavbar();
+  await renderStats();
+  await renderProductsTable();
+  await renderOrdersTable();
   setupTabs();
   setupProductModal();
   setupDeleteModal();
 });
 
 /* ---------- Stats ---------- */
-function renderStats() {
-  const products = ProductDB.getAll();
-  const orders = OrderDB.getAll();
-  const users = UserDB.getAll();
+async function renderStats() {
+  const [products, orders, users] = await Promise.all([
+    ProductDB.getAll(), OrderDB.getAll(), UserDB.getAll()
+  ]);
   const revenue = orders.reduce((sum, o) => sum + o.total, 0);
 
   document.getElementById('statProducts').textContent = products.length;
@@ -45,8 +46,8 @@ function setupTabs() {
 }
 
 /* ---------- Products table ---------- */
-function renderProductsTable() {
-  const products = ProductDB.getAll();
+async function renderProductsTable() {
+  const products = await ProductDB.getAll();
   const tbody = document.getElementById('productsTableBody');
 
   if (products.length === 0) {
@@ -72,17 +73,17 @@ function renderProductsTable() {
   `).join('');
 
   tbody.querySelectorAll('[data-edit]').forEach(btn => {
-    btn.addEventListener('click', () => openProductModal(btn.dataset.edit));
+    btn.addEventListener('click', () => { void openProductModal(btn.dataset.edit); });
   });
   tbody.querySelectorAll('[data-delete]').forEach(btn => {
-    btn.addEventListener('click', () => openDeleteModal(btn.dataset.delete));
+    btn.addEventListener('click', () => { void openDeleteModal(btn.dataset.delete); });
   });
 }
 
 /* ---------- Orders table ---------- */
-function renderOrdersTable() {
-  const orders = [...OrderDB.getAll()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const users = UserDB.getAll();
+async function renderOrdersTable() {
+  const [orderRows, users] = await Promise.all([OrderDB.getAll(), UserDB.getAll()]);
+  const orders = [...orderRows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const tbody = document.getElementById('ordersTableBody');
 
   if (orders.length === 0) {
@@ -113,24 +114,30 @@ function setupProductModal() {
   const form = document.getElementById('productForm');
   const addBtn = document.getElementById('addProductBtn');
   const cancelBtn = document.getElementById('cancelModalBtn');
+  const imageFileInput = document.getElementById('prodImageFile');
 
   addBtn.addEventListener('click', () => openProductModal(null));
   cancelBtn.addEventListener('click', () => closeModal(modal));
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+  imageFileInput.addEventListener('change', () => {
+    const file = imageFileInput.files[0];
+    if (file) showProductImagePreview(URL.createObjectURL(file));
+  });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    saveProduct();
+    await saveProduct();
   });
 }
 
-function openProductModal(productId) {
+async function openProductModal(productId) {
   const modal = document.getElementById('productModal');
   const errorBox = document.getElementById('modalError');
   errorBox.classList.remove('show');
 
   if (productId) {
-    const p = ProductDB.getById(productId);
+    const p = await ProductDB.getById(productId);
+    if (!p) return;
     document.getElementById('modalTitle').textContent = 'Edit Product';
     document.getElementById('productId').value = p.id;
     document.getElementById('prodName').value = p.name;
@@ -139,16 +146,18 @@ function openProductModal(productId) {
     document.getElementById('prodStock').value = p.stock;
     document.getElementById('prodCategory').value = p.category;
     document.getElementById('prodImage').value = p.image;
+    showProductImagePreview(p.image);
   } else {
     document.getElementById('modalTitle').textContent = 'Add Product';
     document.getElementById('productForm').reset();
     document.getElementById('productId').value = '';
+    showProductImagePreview('');
   }
 
   openModal(modal);
 }
 
-function saveProduct() {
+async function saveProduct() {
   const errorBox = document.getElementById('modalError');
   const id = document.getElementById('productId').value;
 
@@ -157,9 +166,10 @@ function saveProduct() {
   const price = parseFloat(document.getElementById('prodPrice').value);
   const stock = parseInt(document.getElementById('prodStock').value, 10);
   const category = document.getElementById('prodCategory').value.trim();
-  const image = document.getElementById('prodImage').value.trim();
+  let image = document.getElementById('prodImage').value.trim();
+  const imageFile = document.getElementById('prodImageFile').files[0];
 
-  if (!name || !description || !category || !image || isNaN(price) || isNaN(stock)) {
+  if (!name || !description || !category || (!image && !imageFile) || isNaN(price) || isNaN(stock)) {
     errorBox.textContent = 'Please fill in all fields with valid values.';
     errorBox.classList.add('show');
     return;
@@ -173,20 +183,42 @@ function saveProduct() {
   const payload = { name, description, price, stock, category, image };
 
   try {
+    if (imageFile) {
+      const dataUrl = await readFileAsDataUrl(imageFile);
+      const uploadedImage = await ProductDB.uploadImage(dataUrl);
+      payload.image = uploadedImage.image;
+    }
     if (id) {
-      ProductDB.update(id, payload);
+      await ProductDB.update(id, payload);
       showToast('Product updated successfully.');
     } else {
-      ProductDB.create(payload);
+      await ProductDB.create(payload);
       showToast('Product added successfully.');
     }
     closeModal(document.getElementById('productModal'));
-    renderProductsTable();
-    renderStats();
+    await renderProductsTable();
+    await renderStats();
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.classList.add('show');
   }
+}
+
+function showProductImagePreview(src) {
+  const preview = document.getElementById('prodImagePreview');
+  if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+  pendingImagePreviewUrl = src.startsWith('blob:') ? src : null;
+  preview.src = src;
+  preview.hidden = !src;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(reader.result));
+    reader.addEventListener('error', () => reject(new Error('Could not read the selected image.')));
+    reader.readAsDataURL(file);
+  });
 }
 
 /* ---------- Delete Modal ---------- */
@@ -195,19 +227,23 @@ function setupDeleteModal() {
   document.getElementById('cancelDeleteBtn').addEventListener('click', () => closeModal(modal));
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
 
-  document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+  document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
     if (!pendingDeleteId) return;
-    ProductDB.delete(pendingDeleteId);
-    showToast('Product deleted.');
-    closeModal(modal);
-    renderProductsTable();
-    renderStats();
-    pendingDeleteId = null;
+    try {
+      await ProductDB.delete(pendingDeleteId);
+      showToast('Product deleted.');
+      closeModal(modal);
+      await renderProductsTable();
+      await renderStats();
+      pendingDeleteId = null;
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
   });
 }
 
-function openDeleteModal(productId) {
-  const product = ProductDB.getById(productId);
+async function openDeleteModal(productId) {
+  const product = await ProductDB.getById(productId);
   if (!product) return;
   pendingDeleteId = productId;
   document.getElementById('deleteProductName').textContent = product.name;
@@ -215,5 +251,5 @@ function openDeleteModal(productId) {
 }
 
 /* ---------- Modal helpers ---------- */
-function openModal(modal) { modal.classList.add('open'); }
-function closeModal(modal) { modal.classList.remove('open'); }
+function openModal(modal) { modal.classList.add('show'); }
+function closeModal(modal) { modal.classList.remove('show'); }

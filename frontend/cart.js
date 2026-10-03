@@ -8,15 +8,15 @@ const FREE_SHIPPING_THRESHOLD = 75;
 
 let currentUser = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  currentUser = requireLogin('login.html');
+document.addEventListener('DOMContentLoaded', async () => {
+  currentUser = await requireLogin('login.html');
   if (!currentUser) return;
 
-  renderNavbar();
-  renderCart();
+  await renderNavbar();
+  await renderCart();
 
-  document.getElementById('checkoutBtn').addEventListener('click', () => {
-    const items = CartDB.getCart(currentUser.id);
+  document.getElementById('checkoutBtn').addEventListener('click', async () => {
+    const items = await CartDB.getCart(currentUser.id);
     if (items.length === 0) {
       showToast('Your cart is empty.', 'error');
       return;
@@ -25,22 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function getEnrichedCartItems() {
-  const items = CartDB.getCart(currentUser.id);
-  return items
-    .map(item => {
-      const product = ProductDB.getById(item.productId);
-      if (!product) return null;
-      return { ...item, product };
-    })
-    .filter(Boolean);
+async function getEnrichedCartItems() {
+  const items = await CartDB.getCart(currentUser.id);
+  const enriched = await Promise.all(items.map(async item => ({
+    ...item,
+    product: await ProductDB.getById(item.productId)
+  })));
+  return enriched.filter(item => item.product);
 }
 
-function renderCart() {
+async function renderCart() {
   const listEl = document.getElementById('cartItemsList');
   const layoutEl = document.getElementById('cartLayout');
   const emptyEl = document.getElementById('emptyCart');
-  const enriched = getEnrichedCartItems();
+  const enriched = await getEnrichedCartItems();
 
   if (enriched.length === 0) {
     layoutEl.style.display = 'none';
@@ -70,24 +68,24 @@ function renderCart() {
   `).join('');
 
   listEl.querySelectorAll('[data-increase]').forEach(btn => {
-    btn.addEventListener('click', () => changeQty(btn.dataset.increase, 1));
+    btn.addEventListener('click', () => { void changeQty(btn.dataset.increase, 1); });
   });
   listEl.querySelectorAll('[data-decrease]').forEach(btn => {
-    btn.addEventListener('click', () => changeQty(btn.dataset.decrease, -1));
+    btn.addEventListener('click', () => { void changeQty(btn.dataset.decrease, -1); });
   });
   listEl.querySelectorAll('[data-remove]').forEach(btn => {
-    btn.addEventListener('click', () => removeItem(btn.dataset.remove));
+    btn.addEventListener('click', () => { void removeItem(btn.dataset.remove); });
   });
 
   renderSummary(enriched);
 }
 
-function changeQty(productId, delta) {
-  const items = CartDB.getCart(currentUser.id);
+async function changeQty(productId, delta) {
+  const items = await CartDB.getCart(currentUser.id);
   const item = items.find(i => i.productId === productId);
   if (!item) return;
 
-  const product = ProductDB.getById(productId);
+  const product = await ProductDB.getById(productId);
   const newQty = item.qty + delta;
 
   if (newQty > product.stock) {
@@ -95,15 +93,19 @@ function changeQty(productId, delta) {
     return;
   }
 
-  CartDB.updateQty(currentUser.id, productId, newQty);
-  renderCart();
-  updateCartBadge();
+  try {
+    await CartDB.updateQty(currentUser.id, productId, newQty);
+    await renderCart();
+    await updateCartBadge();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
 }
 
-function removeItem(productId) {
-  CartDB.removeItem(currentUser.id, productId);
-  renderCart();
-  updateCartBadge();
+async function removeItem(productId) {
+  await CartDB.removeItem(currentUser.id, productId);
+  await renderCart();
+  await updateCartBadge();
   showToast('Item removed from cart.');
 }
 

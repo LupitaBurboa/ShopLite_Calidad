@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — ShopLite</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-shell { max-width: 1200px; margin: 24px auto 48px; padding: 0 20px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .stat-card span {
+      display: block;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .stat-card strong {
+      font-size: 1.8rem;
+      color: #111827;
+    }
+    .admin-panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+    }
+    .admin-tabs {
+      display: flex;
+      gap: 12px;
+      padding: 16px 18px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .admin-tab {
+      border: none;
+      background: transparent;
+      padding: 12px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #374151;
+      border-bottom: 2px solid transparent;
+    }
+    .admin-tab.active {
+      color: #2563eb;
+      border-color: #2563eb;
+    }
+    .tab-panel {
+      padding: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    th {
+      color: #6b7280;
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: #f9fafb;
+    }
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .thumb-sm {
+      width: 54px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal.show { display: flex; }
+    .modal-card {
+      width: min(560px, 100%);
+      background: white;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.18);
+      padding: 20px;
+    }
+    .modal-card h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 1.35rem;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      font-size: 0.85rem;
+      color: #374151;
+      font-weight: 600;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font: inherit;
+      background: white;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    .form-error {
+      display: none;
+      margin: 10px 0;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+    }
+    .form-error.show { display: block; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .text-muted { color: #6b7280; }
+    .toast-container {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 120;
+    }
+    .toast {
+      background: #111827;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+      opacity: 1;
+      transition: opacity 0.25s ease;
+    }
+    .toast-hide { opacity: 0; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="brand">Shop<span>Lite</span></a>
+      <div class="nav-links" id="authArea"></div>
+      <div class="nav-links">
+        <a href="cart.html" class="nav-link cart-link">
+          🛒 Cart <span id="cartCount" class="cart-badge">0</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="admin-shell">
+    <h2 style="margin-bottom:18px;">Admin Panel</h2>
+
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span>Products</span>
+        <strong id="statProducts">0</strong>
+      </div>
+      <div class="stat-card">
+        <span>Orders</span>
+        <strong id="statOrders">0</strong>
+      </div>
+      <div class="stat-card">
+        <span>Revenue</span>
+        <strong id="statRevenue">$0.00</strong>
+      </div>
+      <div class="stat-card">
+        <span>Users</span>
+        <strong id="statUsers">0</strong>
+      </div>
+    </section>
+
+    <section class="admin-panel">
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab active" data-tab="products">Products</button>
+        <button type="button" class="admin-tab" data-tab="orders">Orders</button>
+      </div>
+
+      <div class="tab-panel" id="tabProducts">
+        <div class="toolbar">
+          <button id="addProductBtn" class="btn btn-primary">Add Product</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="productsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="tab-panel" id="tabOrders" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="productModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h3 id="modalTitle">Add Product</h3>
+      <div id="modalError" class="form-error"></div>
+      <form id="productForm">
+        <input type="hidden" id="productId">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="prodName">Name</label>
+            <input id="prodName" name="prodName" required>
+          </div>
+          <div class="form-group full">
+            <label for="prodDescription">Description</label>
+            <textarea id="prodDescription" name="prodDescription" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="prodPrice">Price</label>
+            <input id="prodPrice" name="prodPrice" type="number" step="0.01" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="prodStock">Stock</label>
+            <input id="prodStock" name="prodStock" type="number" min="0" step="1" required>
+          </div>
+          <div class="form-group">
+            <label for="prodCategory">Category</label>
+            <input id="prodCategory" name="prodCategory" required>
+          </div>
+          <div class="form-group">
+            <label for="prodImage">Image URL</label>
+            <input id="prodImage" name="prodImage" placeholder="Paste an image URL or upload below">
+          </div>
+          <div class="form-group full">
+            <label for="prodImageFile">Choose an image from your computer</label>
+            <input id="prodImageFile" name="prodImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <img id="prodImagePreview" alt="Product image preview" hidden style="width: 88px; height: 88px; margin-top: 10px; object-fit: cover; border-radius: 4px;">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h3>Delete Product</h3>
+      <p>Are you sure you want to delete <strong id="deleteProductName"></strong>?</p>
+      <div class="modal-actions">
+        <button type="button" id="cancelDeleteBtn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="db.js"></script>
+  <script src="auth.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

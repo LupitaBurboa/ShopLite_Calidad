@@ -5,9 +5,9 @@
 let allProducts = [];
 let currentFilters = { search: '', category: '', sort: 'default' };
 
-document.addEventListener('DOMContentLoaded', () => {
-  renderNavbar();
-  allProducts = ProductDB.getAll();
+document.addEventListener('DOMContentLoaded', async () => {
+  await renderNavbar();
+  allProducts = await ProductDB.getAll();
   populateCategoryFilter();
   renderProducts();
 
@@ -77,7 +77,7 @@ function renderProducts() {
   grid.innerHTML = filtered.map(p => productCardHTML(p)).join('');
 
   grid.querySelectorAll('[data-add-to-cart]').forEach(btn => {
-    btn.addEventListener('click', () => handleAddToCart(btn.dataset.addToCart));
+    btn.addEventListener('click', () => { void handleAddToCart(btn.dataset.addToCart); });
   });
 }
 
@@ -108,21 +108,25 @@ function productCardHTML(p) {
   `;
 }
 
-function handleAddToCart(productId) {
-  const user = SessionDB.getCurrentUser();
+async function handleAddToCart(productId) {
+  const user = await SessionDB.getCurrentUser();
   if (!user) {
     showToast('Please log in to add items to your cart.', 'error');
     setTimeout(() => { window.location.href = 'login.html'; }, 900);
     return;
   }
 
-  const product = ProductDB.getById(productId);
+  const product = allProducts.find(item => item.id === productId);
   if (!product || product.stock <= 0) {
     showToast('This product is out of stock.', 'error');
     return;
   }
 
-  CartDB.addItem(user.id, productId, 1);
-  updateCartBadge();
-  showToast(`${product.name} added to cart`);
+  try {
+    await CartDB.addItem(user.id, productId, 1);
+    await updateCartBadge();
+    showToast(`${product.name} added to cart`);
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
 }

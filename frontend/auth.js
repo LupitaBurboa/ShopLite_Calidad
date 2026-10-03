@@ -2,8 +2,8 @@
    auth.js — shared auth helpers, route guards, navbar rendering
    ========================================================= */
 
-function requireLogin(redirectTo = 'login.html') {
-  const user = SessionDB.getCurrentUser();
+async function requireLogin(redirectTo = 'login.html') {
+  const user = await SessionDB.getCurrentUser();
   if (!user) {
     window.location.href = redirectTo;
     return null;
@@ -11,8 +11,8 @@ function requireLogin(redirectTo = 'login.html') {
   return user;
 }
 
-function requireAdmin(redirectTo = 'index.html') {
-  const user = SessionDB.getCurrentUser();
+async function requireAdmin(redirectTo = 'index.html') {
+  const user = await SessionDB.getCurrentUser();
   if (!user || user.role !== 'admin') {
     window.location.href = redirectTo;
     return null;
@@ -20,25 +20,25 @@ function requireAdmin(redirectTo = 'index.html') {
   return user;
 }
 
-function redirectIfLoggedIn(target = 'index.html') {
-  const user = SessionDB.getCurrentUser();
+async function redirectIfLoggedIn(target = 'index.html') {
+  const user = await SessionDB.getCurrentUser();
   if (user) {
     window.location.href = target;
   }
 }
 
-function logoutUser() {
-  SessionDB.logout();
+async function logoutUser() {
+  await SessionDB.logout();
   window.location.href = 'index.html';
 }
 
 /* Renders the shared navbar auth area (#authArea) based on session state.
    Expects an element with id="authArea" and id="cartCount" (optional) on the page. */
-function renderNavbar() {
+async function renderNavbar() {
   const authArea = document.getElementById('authArea');
   if (!authArea) return;
 
-  const user = SessionDB.getCurrentUser();
+  const user = await SessionDB.getCurrentUser();
 
   if (!user) {
     authArea.innerHTML = `
@@ -60,19 +60,19 @@ function renderNavbar() {
     }
   }
 
-  updateCartBadge();
+  await updateCartBadge();
 }
 
-function updateCartBadge() {
+async function updateCartBadge() {
   const badge = document.getElementById('cartCount');
   if (!badge) return;
-  const user = SessionDB.getCurrentUser();
+  const user = await SessionDB.getCurrentUser();
   if (!user) {
     badge.textContent = '0';
     badge.style.display = 'none';
     return;
   }
-  const items = CartDB.getCart(user.id);
+  const items = await CartDB.getCart(user.id);
   const totalQty = items.reduce((sum, i) => sum + i.qty, 0);
   badge.textContent = String(totalQty);
   badge.style.display = totalQty > 0 ? 'inline-block' : 'none';

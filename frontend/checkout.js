@@ -9,18 +9,17 @@ const CHK_FREE_SHIPPING_THRESHOLD = 75;
 let checkoutUser = null;
 let checkoutItems = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  checkoutUser = requireLogin('login.html');
+document.addEventListener('DOMContentLoaded', async () => {
+  checkoutUser = await requireLogin('login.html');
   if (!checkoutUser) return;
 
-  renderNavbar();
+  await renderNavbar();
 
-  checkoutItems = CartDB.getCart(checkoutUser.id)
-    .map(item => {
-      const product = ProductDB.getById(item.productId);
-      return product ? { ...item, product } : null;
-    })
-    .filter(Boolean);
+  const cartItems = await CartDB.getCart(checkoutUser.id);
+  checkoutItems = (await Promise.all(cartItems.map(async item => ({
+    ...item,
+    product: await ProductDB.getById(item.productId)
+  })))).filter(item => item.product);
 
   if (checkoutItems.length === 0) {
     window.location.href = 'cart.html';
@@ -121,63 +120,29 @@ function validatePayment() {
   return true;
 }
 
-function handlePlaceOrder(e) {
+async function handlePlaceOrder(e) {
   e.preventDefault();
-
-  // re-check stock right before placing the order in case it changed
-  for (const item of checkoutItems) {
-    const liveProduct = ProductDB.getById(item.product.id);
-    if (!liveProduct || liveProduct.stock < item.qty) {
-      showToast(`Not enough stock for ${item.product.name}.`, 'error');
-      return;
-    }
-  }
-
   if (!validatePayment()) return;
 
   const placeOrderBtn = document.getElementById('placeOrderBtn');
   placeOrderBtn.disabled = true;
   placeOrderBtn.textContent = 'Processing...';
 
-  // simulate a payment processing delay
-  setTimeout(() => {
-    const { subtotal, tax, shipping, total } = calcTotals();
+  const shippingInfo = {
+    fullName: document.getElementById('fullName').value.trim(),
+    address: document.getElementById('address').value.trim(),
+    city: document.getElementById('city').value.trim(),
+    zip: document.getElementById('zip').value.trim(),
+    country: document.getElementById('country').value.trim()
+  };
 
-    const shipping_info = {
-      fullName: document.getElementById('fullName').value.trim(),
-      address: document.getElementById('address').value.trim(),
-      city: document.getElementById('city').value.trim(),
-      zip: document.getElementById('zip').value.trim(),
-      country: document.getElementById('country').value.trim()
-    };
-
-    const orderItems = checkoutItems.map(i => ({
-      productId: i.product.id,
-      name: i.product.name,
-      price: i.product.price,
-      qty: i.qty
-    }));
-
-    const order = OrderDB.create({
-      userId: checkoutUser.id,
-      items: orderItems,
-      subtotal,
-      tax,
-      shipping,
-      total,
-      shippingInfo: shipping_info,
-      paymentLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4)
-    });
-
-    // decrement stock for each purchased product
-    orderItems.forEach(i => ProductDB.decrementStock(i.productId, i.qty));
-
-    // clear the user's cart
-    CartDB.clearCart(checkoutUser.id);
-
-    // stash last order id for confirmation page
+  try {
+    const order = await OrderDB.create({ shippingInfo });
     sessionStorage.setItem('lastOrderId', order.id);
-
     window.location.href = 'order-confirmation.html';
-  }, 900);
+  } catch (error) {
+    showToast(error.message, 'error');
+    placeOrderBtn.disabled = false;
+    placeOrderBtn.textContent = 'Place Order';
+  }
 }
