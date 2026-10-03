@@ -103,3 +103,28 @@ El servidor crea los productos de ejemplo si la tabla `products` está vacía. T
 - `db.js`: cliente `fetch` del navegador para la API.
 - `checkout.js`: formulario de envío y envío de la solicitud de pedido.
 - `admin.js`: administración del catálogo, usuarios y pedidos.
+
+## 6. Instalación y ejecución
+
+### Requisitos
+
+- Node.js LTS y npm.
+- Una terminal abierta en la carpeta raíz del proyecto.
+
+Comprueba que estén disponibles:
+
+```powershell
+node --version
+npm --version
+```
+
+### Instalar dependencias e iniciar
+
+Desde la carpeta del proyecto, ejecuta:
+
+```powershell
+npm install
+npm start
+```
+
+Abre `http://localhost:3000` en el navegador. Express sirve tanto la interfaz como la API; no abras `index.html` directamente ni uses Live Server. Para detener el servidor, vuelve a la terminal y presiona `Ctrl+C`.
